@@ -1,0 +1,11 @@
+# Core mathematical operations
+numpy>=1.24.0
+
+# Graphical User Interface
+PySide6>=6.5.0
+
+# Visualization and benchmarking plots
+matplotlib>=3.7.0
+
+# Unit & integration testing
+pytest>=7.3.0
