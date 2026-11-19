@@ -1,0 +1,56 @@
+{
+  "name": "n10_r0.5_s44",
+  "capacity": 47.94,
+  "items": [
+    {
+      "id": "item_0",
+      "value": 27.56,
+      "weight": 8.76
+    },
+    {
+      "id": "item_1",
+      "value": 9.66,
+      "weight": 17.38
+    },
+    {
+      "id": "item_2",
+      "value": 2.43,
+      "weight": 5.28
+    },
+    {
+      "id": "item_3",
+      "value": 1.43,
+      "weight": 3.22
+    },
+    {
+      "id": "item_4",
+      "value": 26.17,
+      "weight": 3.98
+    },
+    {
+      "id": "item_5",
+      "value": 34.98,
+      "weight": 19.8
+    },
+    {
+      "id": "item_6",
+      "value": 20.85,
+      "weight": 8.19
+    },
+    {
+      "id": "item_7",
+      "value": 16.98,
+      "weight": 14.13
+    },
+    {
+      "id": "item_8",
+      "value": 42.23,
+      "weight": 2.4
+    },
+    {
+      "id": "item_9",
+      "value": 6.49,
+      "weight": 12.73
+    }
+  ]
+}

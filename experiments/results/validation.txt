@@ -1,0 +1,37 @@
+test_full_astar_solution_contract (tests.test_astar.TestAStarInterface.test_full_astar_solution_contract)
+Will verify that solve_astar returns a valid SolutionResult once implemented by TV2. ... skipped 'Full A* search tree traversal implementation pending TV2.'
+test_invalid_parameters_raise_value_error (tests.test_astar.TestAStarInterface.test_invalid_parameters_raise_value_error) ... ok
+test_signature_and_stub_raises_not_implemented (tests.test_astar.TestAStarInterface.test_signature_and_stub_raises_not_implemented)
+Confirms solve_astar raises NotImplementedError during structure phase. ... ok
+test_generate_dataset (tests.test_core.TestDatasetIO.test_generate_dataset) ... ok
+test_load_sample_json_and_csv (tests.test_core.TestDatasetIO.test_load_sample_json_and_csv) ... ok
+test_compute_upper_bound (tests.test_core.TestEvaluation.test_compute_upper_bound) ... ok
+test_evaluate_binary_solution (tests.test_core.TestEvaluation.test_evaluate_binary_solution) ... ok
+test_repair_solution (tests.test_core.TestEvaluation.test_repair_solution) ... ok
+test_negative_value_raises (tests.test_core.TestItem.test_negative_value_raises) ... ok
+test_non_finite_raises (tests.test_core.TestItem.test_non_finite_raises) ... ok
+test_valid_item (tests.test_core.TestItem.test_valid_item) ... ok
+test_zero_or_negative_weight_raises (tests.test_core.TestItem.test_zero_or_negative_weight_raises) ... ok
+test_empty_items_raises (tests.test_core.TestKnapsackProblem.test_empty_items_raises) ... ok
+test_invalid_capacity_raises (tests.test_core.TestKnapsackProblem.test_invalid_capacity_raises) ... ok
+test_valid_problem_and_auto_ids (tests.test_core.TestKnapsackProblem.test_valid_problem_and_auto_ids) ... ok
+test_invalid_status_raises (tests.test_core.TestSolutionResult.test_invalid_status_raises) ... ok
+test_valid_result (tests.test_core.TestSolutionResult.test_valid_result) ... ok
+test_default_config (tests.test_firefly.TestFireflyConfig.test_default_config) ... ok
+test_invalid_parameters_raise (tests.test_firefly.TestFireflyConfig.test_invalid_parameters_raise) ... ok
+test_full_firefly_solution_contract (tests.test_firefly.TestFireflyInterface.test_full_firefly_solution_contract)
+Will verify that solve_firefly returns a valid SolutionResult once implemented by TV3. ... skipped 'Firefly Algorithm metaheuristic implementation pending TV3.'
+test_signature_and_stub_raises_not_implemented (tests.test_firefly.TestFireflyInterface.test_signature_and_stub_raises_not_implemented)
+Confirms solve_firefly raises NotImplementedError during structure phase. ... ok
+test_inconsistent_result_is_error (tests.test_integration.TestBenchmarkPipeline.test_inconsistent_result_is_error) ... ok
+test_invalid_and_empty_export (tests.test_integration.TestBenchmarkPipeline.test_invalid_and_empty_export) ... ok
+test_measurements_seed_and_exports (tests.test_integration.TestBenchmarkPipeline.test_measurements_seed_and_exports) ... ok
+test_no_optimal_reference_after_timeout (tests.test_integration.TestBenchmarkPipeline.test_no_optimal_reference_after_timeout) ... ok
+test_pending_is_not_a_measurement (tests.test_integration.TestBenchmarkPipeline.test_pending_is_not_a_measurement) ... ok
+test_form_and_thread_completion (tests.test_integration.TestQtIntegration.test_form_and_thread_completion) ... ok
+test_worker_error_signal (tests.test_integration.TestQtIntegration.test_worker_error_signal) ... ok
+
+----------------------------------------------------------------------
+Ran 28 tests in 0.069s
+
+OK (skipped=2)

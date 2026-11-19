@@ -1,0 +1,27 @@
+{
+  "created_utc": "2026-11-19T15:24:58.245205+00:00",
+  "python": "3.14.3",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "arguments": {
+    "output": "experiments/results/availability",
+    "runs": 3,
+    "seed": 42,
+    "time_limit": 2.0,
+    "population": 20,
+    "iterations": 100
+  },
+  "firefly": {
+    "population_size": 20,
+    "max_iterations": 100,
+    "alpha": 0.5,
+    "alpha_decay": 0.98,
+    "beta0": 1.0,
+    "gamma": 1.0,
+    "coord_min": -6.0,
+    "coord_max": 6.0,
+    "time_limit_sec": 2.0,
+    "seed": 42
+  },
+  "astar_max_expanded_nodes": 100000,
+  "protocol": "A* once; FA repeated seeds; gap only with certified optimal A*; sample standard deviation"
+}

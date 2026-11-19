@@ -1,0 +1,506 @@
+{
+  "name": "n100_r0.75_s42",
+  "capacity": 781.96,
+  "items": [
+    {
+      "id": "item_0",
+      "value": 2.23,
+      "weight": 13.15
+    },
+    {
+      "id": "item_1",
+      "value": 11.94,
+      "weight": 6.23
+    },
+    {
+      "id": "item_2",
+      "value": 34.16,
+      "weight": 14.99
+    },
+    {
+      "id": "item_3",
+      "value": 5.26,
+      "weight": 17.95
+    },
+    {
+      "id": "item_4",
+      "value": 2.46,
+      "weight": 9.02
+    },
+    {
+      "id": "item_5",
+      "value": 25.76,
+      "weight": 5.15
+    },
+    {
+      "id": "item_6",
+      "value": 10.74,
+      "weight": 1.5
+    },
+    {
+      "id": "item_7",
+      "value": 27.7,
+      "weight": 13.35
+    },
+    {
+      "id": "item_8",
+      "value": 29.87,
+      "weight": 5.19
+    },
+    {
+      "id": "item_9",
+      "value": 1.32,
+      "weight": 16.38
+    },
+    {
+      "id": "item_10",
+      "value": 35.21,
+      "weight": 16.31
+    },
+    {
+      "id": "item_11",
+      "value": 8.62,
+      "weight": 7.46
+    },
+    {
+      "id": "item_12",
+      "value": 17.49,
+      "weight": 19.19
+    },
+    {
+      "id": "item_13",
+      "value": 5.74,
+      "weight": 2.76
+    },
+    {
+      "id": "item_14",
+      "value": 30.58,
+      "weight": 17.1
+    },
+    {
+      "id": "item_15",
+      "value": 36.76,
+      "weight": 16.34
+    },
+    {
+      "id": "item_16",
+      "value": 48.68,
+      "weight": 11.19
+    },
+    {
+      "id": "item_17",
+      "value": 28.05,
+      "weight": 8.19
+    },
+    {
+      "id": "item_18",
+      "value": 31.31,
+      "weight": 16.76
+    },
+    {
+      "id": "item_19",
+      "value": 29.29,
+      "weight": 17.37
+    },
+    {
+      "id": "item_20",
+      "value": 3.25,
+      "weight": 14.39
+    },
+    {
+      "id": "item_21",
+      "value": 15.18,
+      "weight": 5.33
+    },
+    {
+      "id": "item_22",
+      "value": 12.41,
+      "weight": 2.52
+    },
+    {
+      "id": "item_23",
+      "value": 14.62,
+      "weight": 2.92
+    },
+    {
+      "id": "item_24",
+      "value": 18.88,
+      "weight": 13.08
+    },
+    {
+      "id": "item_25",
+      "value": 11.27,
+      "weight": 8.03
+    },
+    {
+      "id": "item_26",
+      "value": 46.9,
+      "weight": 6.07
+    },
+    {
+      "id": "item_27",
+      "value": 30.85,
+      "weight": 13.31
+    },
+    {
+      "id": "item_28",
+      "value": 36.73,
+      "weight": 4.25
+    },
+    {
+      "id": "item_29",
+      "value": 19.59,
+      "weight": 4.1
+    },
+    {
+      "id": "item_30",
+      "value": 32.36,
+      "weight": 19.8
+    },
+    {
+      "id": "item_31",
+      "value": 34.55,
+      "weight": 11.58
+    },
+    {
+      "id": "item_32",
+      "value": 39.02,
+      "weight": 17.01
+    },
+    {
+      "id": "item_33",
+      "value": 2.57,
+      "weight": 5.35
+    },
+    {
+      "id": "item_34",
+      "value": 14.12,
+      "weight": 6.99
+    },
+    {
+      "id": "item_35",
+      "value": 47.2,
+      "weight": 5.01
+    },
+    {
+      "id": "item_36",
+      "value": 16.42,
+      "weight": 17.65
+    },
+    {
+      "id": "item_37",
+      "value": 20.39,
+      "weight": 13.45
+    },
+    {
+      "id": "item_38",
+      "value": 23.48,
+      "weight": 18.38
+    },
+    {
+      "id": "item_39",
+      "value": 13.08,
+      "weight": 6.03
+    },
+    {
+      "id": "item_40",
+      "value": 13.87,
+      "weight": 11.67
+    },
+    {
+      "id": "item_41",
+      "value": 44.99,
+      "weight": 12.11
+    },
+    {
+      "id": "item_42",
+      "value": 11.75,
+      "weight": 8.59
+    },
+    {
+      "id": "item_43",
+      "value": 25.97,
+      "weight": 19.95
+    },
+    {
+      "id": "item_44",
+      "value": 3.31,
+      "weight": 2.73
+    },
+    {
+      "id": "item_45",
+      "value": 31.74,
+      "weight": 3.08
+    },
+    {
+      "id": "item_46",
+      "value": 21.69,
+      "weight": 16.05
+    },
+    {
+      "id": "item_47",
+      "value": 19.7,
+      "weight": 2.21
+    },
+    {
+      "id": "item_48",
+      "value": 26.93,
+      "weight": 19.93
+    },
+    {
+      "id": "item_49",
+      "value": 43.18,
+      "weight": 19.45
+    },
+    {
+      "id": "item_50",
+      "value": 36.32,
+      "weight": 1.22
+    },
+    {
+      "id": "item_51",
+      "value": 27.31,
+      "weight": 13.95
+    },
+    {
+      "id": "item_52",
+      "value": 32.41,
+      "weight": 6.07
+    },
+    {
+      "id": "item_53",
+      "value": 22.3,
+      "weight": 3.12
+    },
+    {
+      "id": "item_54",
+      "value": 47.74,
+      "weight": 9.62
+    },
+    {
+      "id": "item_55",
+      "value": 13.91,
+      "weight": 17.64
+    },
+    {
+      "id": "item_56",
+      "value": 9.75,
+      "weight": 10.51
+    },
+    {
+      "id": "item_57",
+      "value": 43.66,
+      "weight": 18.34
+    },
+    {
+      "id": "item_58",
+      "value": 32.31,
+      "weight": 6.67
+    },
+    {
+      "id": "item_59",
+      "value": 8.49,
+      "weight": 12.57
+    },
+    {
+      "id": "item_60",
+      "value": 27.43,
+      "weight": 15.49
+    },
+    {
+      "id": "item_61",
+      "value": 26.99,
+      "weight": 15.79
+    },
+    {
+      "id": "item_62",
+      "value": 16.88,
+      "weight": 1.01
+    },
+    {
+      "id": "item_63",
+      "value": 46.53,
+      "weight": 1.37
+    },
+    {
+      "id": "item_64",
+      "value": 41.75,
+      "weight": 17.7
+    },
+    {
+      "id": "item_65",
+      "value": 3.84,
+      "weight": 6.84
+    },
+    {
+      "id": "item_66",
+      "value": 47.4,
+      "weight": 17.68
+    },
+    {
+      "id": "item_67",
+      "value": 24.81,
+      "weight": 2.63
+    },
+    {
+      "id": "item_68",
+      "value": 38.27,
+      "weight": 2.32
+    },
+    {
+      "id": "item_69",
+      "value": 7.29,
+      "weight": 15.55
+    },
+    {
+      "id": "item_70",
+      "value": 27.94,
+      "weight": 10.03
+    },
+    {
+      "id": "item_71",
+      "value": 43.75,
+      "weight": 6.04
+    },
+    {
+      "id": "item_72",
+      "value": 11.38,
+      "weight": 9.04
+    },
+    {
+      "id": "item_73",
+      "value": 36.77,
+      "weight": 11.25
+    },
+    {
+      "id": "item_74",
+      "value": 16.27,
+      "weight": 4.82
+    },
+    {
+      "id": "item_75",
+      "value": 32.84,
+      "weight": 19.91
+    },
+    {
+      "id": "item_76",
+      "value": 26.36,
+      "weight": 9.32
+    },
+    {
+      "id": "item_77",
+      "value": 12.01,
+      "weight": 3.3
+    },
+    {
+      "id": "item_78",
+      "value": 29.83,
+      "weight": 7.42
+    },
+    {
+      "id": "item_79",
+      "value": 11.79,
+      "weight": 5.37
+    },
+    {
+      "id": "item_80",
+      "value": 31.92,
+      "weight": 2.35
+    },
+    {
+      "id": "item_81",
+      "value": 45.37,
+      "weight": 5.35
+    },
+    {
+      "id": "item_82",
+      "value": 4.47,
+      "weight": 17.33
+    },
+    {
+      "id": "item_83",
+      "value": 33.78,
+      "weight": 5.52
+    },
+    {
+      "id": "item_84",
+      "value": 7.48,
+      "weight": 5.07
+    },
+    {
+      "id": "item_85",
+      "value": 28.98,
+      "weight": 18.77
+    },
+    {
+      "id": "item_86",
+      "value": 39.45,
+      "weight": 9.98
+    },
+    {
+      "id": "item_87",
+      "value": 10.33,
+      "weight": 16.34
+    },
+    {
+      "id": "item_88",
+      "value": 22.12,
+      "weight": 2.84
+    },
+    {
+      "id": "item_89",
+      "value": 23.88,
+      "weight": 9.05
+    },
+    {
+      "id": "item_90",
+      "value": 33.99,
+      "weight": 14.85
+    },
+    {
+      "id": "item_91",
+      "value": 5.82,
+      "weight": 19.7
+    },
+    {
+      "id": "item_92",
+      "value": 17.63,
+      "weight": 8.65
+    },
+    {
+      "id": "item_93",
+      "value": 13.18,
+      "weight": 17.37
+    },
+    {
+      "id": "item_94",
+      "value": 22.98,
+      "weight": 4.61
+    },
+    {
+      "id": "item_95",
+      "value": 14.65,
+      "weight": 9.02
+    },
+    {
+      "id": "item_96",
+      "value": 46.24,
+      "weight": 5.75
+    },
+    {
+      "id": "item_97",
+      "value": 43.21,
+      "weight": 9.42
+    },
+    {
+      "id": "item_98",
+      "value": 3.48,
+      "weight": 11.46
+    },
+    {
+      "id": "item_99",
+      "value": 41.97,
+      "weight": 19.99
+    }
+  ]
+}

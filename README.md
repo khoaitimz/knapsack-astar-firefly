@@ -1,164 +1,77 @@
-# 0/1 Knapsack Problem Solver: A* Search & Firefly Algorithm
+# Ứng dụng thuật toán A* và thuật toán đom đóm (Firefly Algorithm) cho bài toán cái túi (Knapsack problem)
 
-Đồ án môn **Trí tuệ nhân tạo (Artificial Intelligence)**.  
-**Hạn nộp:** 16/12/2026.
+Đồ án Trí tuệ nhân tạo – Trường Công nghệ và Thiết kế, ĐH Kinh tế TP.HCM.
+Giảng viên: TS. Đặng Ngọc Hoàng Thành. Khoa học dữ liệu, K50.
+Phần TV4: Tiến Tài.
 
----
+## Cài đặt và chạy
 
-## 1. Giới thiệu đề tài
+Python 3.10 trở lên, khuyến nghị môi trường ảo:
 
-Dự án nghiên cứu, hiện thực hóa và so sánh thực nghiệm hai phương pháp giải bài toán tối ưu hóa tổ hợp kinh điển **0/1 Knapsack Problem**:
-1. **A* Search (TV2):** Thuật toán tìm kiếm cây quyết định chính xác (Exact Search) kết hợp cắt tỉa cận trên (Branch-and-Bound pruning) dựa trên hàm thư giãn phân số (Fractional Knapsack relaxation). Đảm bảo tính admissible và tìm ra nghiệm tối ưu toàn cục.
-2. **Firefly Algorithm (TV3):** Thuật toán tiến hóa bầy đàn (Swarm Intelligence Metaheuristic) mô phỏng hành vi phát sáng và thu hút của đom đóm. Sử dụng hàm Sigmoid ánh xạ không gian liên tục sang vectơ nhị phân kết hợp cơ chế sửa nghiệm vi phạm ràng buộc sức chứa (`repair_solution`).
-
----
-
-## 2. Phân công trách nhiệm nhóm (4 thành viên)
-
-| Thành viên | File chính phụ trách | Module & Nhiệm vụ chính |
-| :--- | :--- | :--- |
-| **TV1** | `core/*`, `docs/DATA.md`, `assets/datasets/*`, `tests/test_core.py` | Mô hình hóa dữ liệu bài toán (`Item`, `KnapsackProblem`), sinh/nạp dữ liệu (JSON/CSV), hàm đánh giá (`evaluate_binary_solution`), sửa nghiệm (`repair_solution`), tính cận trên (`compute_upper_bound`). |
-| **TV2** | `algorithms/astar.py`, `main.py`, `requirements.txt`, `.gitignore`, `tests/test_astar.py`, `docs/INTERFACE_CONTRACT.md` | Thiết kế toán học & cài đặt thuật toán A* Search với Branch-and-Bound pruning, CLI entrypoint, quản lý contract và điều phối Git integration. |
-| **TV3** | `algorithms/firefly.py`, `docs/SUMMARY.md`, `tests/test_firefly.py` | Cài đặt Firefly Algorithm với Sigmoid discretization, điều khiển siêu tham số (`FireflyConfig`), ghi nhận lịch sử hội tụ. |
-| **TV4** | `gui/*`, `experiments/*`, `tests/test_integration.py`, `README.md` | Thiết kế giao diện trực quan `PySide6`, Worker chạy nền (`QThread`), khung thực nghiệm so sánh tự động (`benchmark.py`), tổng hợp báo cáo & slide. |
-
----
-
-## 3. Cấu trúc thư mục dự án
-
-```text
-knapsack-ai-project/
-├── main.py                     # Entry point chính của ứng dụng
-├── requirements.txt            # Danh sách thư viện phụ thuộc
-├── README.md                   # Hướng dẫn chi tiết
-├── .gitignore                  # Cấu hình bỏ qua file rác và cache
-├── core/                       # Package mô hình bài toán & đánh giá
-│   ├── __init__.py
-│   ├── knapsack.py             # Item, KnapsackProblem, SolutionResult
-│   ├── dataset.py              # Đọc/ghi JSON, CSV và sinh dữ liệu ngẫu nhiên
-│   └── evaluation.py           # evaluate, repair, compute_upper_bound
-├── algorithms/                 # Package thuật toán AI
-│   ├── __init__.py
-│   ├── astar.py                # Thuật toán A* Search (TV2)
-│   └── firefly.py              # Thuật toán Firefly Algorithm (TV3)
-├── gui/                        # Giao diện đồ họa người dùng
-│   ├── __init__.py
-│   └── main_window.py          # PySide6 GUI & SolverWorker
-├── experiments/                # Bộ công cụ thực nghiệm & benchmark
-│   ├── __init__.py
-│   ├── benchmark.py            # Chạy benchmark tự động & xuất CSV/JSON
-│   └── results/                # Lưu trữ kết quả thực nghiệm
-├── tests/                      # Bộ kiểm thử tự động
-│   ├── __init__.py
-│   ├── test_core.py            # Kiểm thử core module
-│   ├── test_astar.py           # Kiểm thử A* contract
-│   ├── test_firefly.py         # Kiểm thử Firefly contract
-│   └── test_integration.py    # Kiểm thử tích hợp toàn hệ thống
-├── docs/                       # Tài liệu đặc tả kỹ thuật
-│   ├── INTERFACE_CONTRACT.md   # Bản hợp đồng giao diện chính thức
-│   ├── DATA.md                 # Đặc tả cấu trúc dữ liệu
-│   └── SUMMARY.md              # Bảng tóm tắt & so sánh thuật toán
-└── assets/
-    └── datasets/               # Các file dữ liệu mẫu (.json, .csv)
-        ├── sample_01.json
-        └── sample_01.csv
-```
-
----
-
-## 4. Hướng dẫn cài đặt & Chạy ứng dụng
-
-### 4.1. Yêu cầu hệ thống
-- Python `>= 3.10` (khuyến nghị Python 3.11 hoặc 3.12).
-- Hệ điều hành: macOS, Linux, hoặc Windows.
-
-### 4.2. Khởi tạo môi trường ảo (Virtual Environment)
-
-```bash
-# Di chuyển vào thư mục dự án
-cd "knapsack-a*-firefly"
-
-# Khởi tạo virtual environment
-python3 -m venv .venv
-
-# Kích hoạt virtual environment:
-# Trên macOS / Linux:
-source .venv/bin/activate
-# Trên Windows (cmd / PowerShell):
-# .venv\Scripts\activate
-```
-
-### 4.3. Cài đặt các thư viện cần thiết
-
-```bash
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-### 4.4. Chạy chương trình
-
-#### Chạy giao diện đồ họa GUI (PySide6):
-```bash
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 python main.py
-```
-*(Nếu môi trường chưa cài đặt PySide6 hoặc chạy qua SSH/headless, chương trình sẽ tự động fallback sang chế độ CLI demo)*
-
----
-
-## 5. Chạy bộ kiểm thử (Automated Tests)
-
-Dự án hỗ trợ chạy test qua standard library `unittest` hoặc `pytest`:
-
-```bash
-# Chạy toàn bộ test bằng unittest
-python3 -m unittest discover -s tests -v
-
-# Hoặc nếu dùng pytest:
-pytest tests/ -v
+python -m unittest discover -v
 ```
 
----
+GUI cần PySide6; chạy benchmark không cần GUI. Form cho phép sinh dữ liệu với seed,
+nạp JSON/CSV, xem vật và sức chứa, chọn giới hạn A*, cấu hình FA, chạy từng thuật toán
+trên cùng dữ liệu rồi xuất JSON. Dữ liệu CSV dùng định dạng trong `docs/DATA.md`.
+Nút nạp/sinh/chạy/xuất bị khóa khi luồng nền đang chạy; chờ hoàn tất trước khi đóng.
+Các bảng chỉ đọc; đổi dữ liệu sẽ xóa kết quả cũ. Chi tiết hiển thị vật chọn và metrics,
+bao gồm lịch sử hội tụ nếu thuật toán cung cấp.
 
-## 6. Luồng dữ liệu (Data Flow)
+## Thực nghiệm tái lập
 
-```text
-[Input: UI Form / File JSON/CSV / Dataset Generator]
-                         │
-                         ▼
-             [KnapsackProblem (core)]
-                         │
-         ┌───────────────┴───────────────┐
-         ▼                               ▼
- [solve_astar (TV2)]            [solve_firefly (TV3)]
-         │                               │
-         └───────────────┬───────────────┘
-                         ▼
-              [SolutionResult (core)]
-                         │
-         ┌───────────────┴───────────────┐
-         ▼                               ▼
-[PySide6 Main Window (TV4)]    [Benchmark Summary (TV4)]
+```powershell
+python -m experiments.benchmark --runs 10 --seed 42 --time-limit 2 --output experiments/results/latest
 ```
 
----
+Thiết kế: 3 cỡ (10, 30, 100 vật) × 3 tỷ lệ sức chứa (0.25, 0.5, 0.75) × 3 seed dữ liệu.
+A* chạy một lần mỗi instance; FA chạy 10 lần với seed liên tiếp. Cả hai có cùng giới hạn
+thời gian, A* thêm giới hạn 100000 nút; FA mặc định 20 cá thể, 100 vòng. Đây là so sánh
+với ngân sách trần tương đương, không có nghĩa thời gian sử dụng thực tế bằng nhau.
+Chỉ có A* và FA trong bảng. Không thêm thuật toán giải ngoài đề tài.
 
-## 7. Quy định Git & Quy trình phối hợp nhóm
+Đầu ra: records CSV/JSON, summary CSV/JSON, metadata môi trường/cấu hình và từng bộ dữ liệu.
+Thống kê theo instance và thuật toán: số lần hợp lệ, giá trị trung bình/độ lệch chuẩn mẫu/tốt nhất,
+thời gian trung bình/độ lệch chuẩn, gap trung bình và số lần đạt tối ưu.
+`gap = 100 × (V_A* − V) / V_A*`, chỉ khi A* xác nhận `optimal`; nếu tối ưu bằng 0 thì gap=0.
+Khi A* hết thời gian/nút, gap để trống. Kết quả bị lỗi/thiếu thuật toán dùng null và bị loại
+khỏi thống kê; mã thoát benchmark là 2 nếu có lần thiếu/lỗi. Thời gian một lần A* chỉ có tính
+mô tả; nên lặp lại toàn bộ thí nghiệm để đánh giá độ nhiễu thời gian. Không suy rộng kết luận
+cho mọi phân phối dữ liệu từ bộ sinh uniform này.
 
-1. **Tuân thủ Interface Contract:** Mọi thay đổi trong `docs/INTERFACE_CONTRACT.md` phải được toàn nhóm thảo luận và phê duyệt trước khi cập nhật.
-2. **Quy tắc tạo nhánh:**
-   - TV1: `feature/core-dataset-eval`
-   - TV2: `feature/astar-algorithm`
-   - TV3: `feature/firefly-algorithm`
-   - TV4: `feature/gui-benchmark`
-3. **Quy tắc Commit & Review:**
-   - Rebase nhánh của mình với `origin/main` trước khi tạo Pull Request:
-     ```bash
-     git fetch origin
-     git rebase origin/main
-     ```
-   - Chạy kiểm thử nội bộ để đảm bảo 100% test pass trước khi yêu cầu review.
-   - Mỗi Pull Request phải có ít nhất 2 thành viên review theo sơ đồ đã phân công:
-     - TV1 review TV2, TV3.
-     - TV2 review TV1, TV4.
-     - TV3 review TV1, TV2.
-     - TV4 review TV3, TV4.
+**Trạng thái thực tế:** nhánh gốc hiện có hai solver dạng `NotImplementedError` của TV2/TV3.
+`experiments/results/availability` ghi 108 lần thử trên 27 instance (FA 3 lần): tất cả pending,
+không phải kết quả hiệu năng. Chưa thể kết luận thuật toán nào tốt hơn hoặc demo nghiệm thật.
+Sau khi ghép solver, chạy lại lệnh 10 lần/FA và cập nhật phần kết quả trong báo cáo/slide.
+Các kiểm thử dùng mock kiểm tra cơ chế tích hợp, không chứng minh chất lượng solver.
+
+## Phân công và bàn giao
+
+| Thành viên | Phạm vi |
+|---|---|
+| TV1 Quỳnh Trâm | core, DATA, datasets, test_core; Mô hình và Dữ liệu |
+| TV2 Nhật Mai | A*, main, requirements, gitignore, test_astar; phần A* |
+| TV3 Bảo Ngân | FA, SUMMARY, test_firefly; phần FA |
+| TV4 Tiến Tài | gui, experiments/results, test_integration, README; GUI/Thực nghiệm và hỗ trợ ghép |
+
+Bản thảo báo cáo: `experiments/results/REPORT_TV4.md`. Nội dung slide và lời dẫn:
+`experiments/results/SLIDES_TV4.md`. Không thay đổi solver của thành viên khác.
+Chưa có mẫu báo cáo chính thức trong repo; phần TV4 cần ghép vào mẫu của giảng viên.
+
+## Turnitin và điều kiện nộp
+
+Ghép các phần báo cáo, thống nhất tên đề tài, ký hiệu, mục lục, bảng/hình có giải thích
+và trích dẫn nguồn thực sự sử dụng. Kiểm tra bằng Turnitin với cấu hình mặc định,
+xem xét từng đoạn trùng và sửa cách diễn đạt/trích dẫn dựa trên hiểu biết; kiểm tra lại
+đến khi tỷ lệ lặp **dưới 30%**. Lưu kết quả chính thức rồi nối file vào cuối báo cáo.
+Chưa thực hiện kiểm tra Turnitin; chưa có tài khoản, bản ghép cuối và kết quả chính thức.
+Không được coi ghi chú này là chứng nhận tỷ lệ lặp hoặc thay bằng ảnh tự tạo.
+
+Slide trình chiếu trên trình duyệt: [slides_tv4.html](experiments/results/slides_tv4.html). Dùng phím trái/phải hoặc PageUp/PageDown; có nút in/lưu PDF.
+
+![Form GUI đã kiểm tra](experiments/results/gui_form.png)

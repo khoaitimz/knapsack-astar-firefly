@@ -1,181 +1,125 @@
-"""Empirical benchmarking framework comparing A* Search and Firefly Algorithm.
-
-Responsible member: TV4
-
-This module executes systematic comparative experiments on problem instances,
-calculates statistical summaries (mean, std, best, execution times), and exports
-structured reports to CSV and JSON.
-"""
-
+"""Reproducible TV4 benchmark; unavailable solvers never become measurements."""
 from __future__ import annotations
-
+import argparse
 import csv
 import json
+import platform
+import statistics
+from dataclasses import asdict, replace
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
-
 from algorithms.astar import solve_astar
 from algorithms.firefly import FireflyConfig, solve_firefly
+from core.dataset import generate_dataset, save_dataset_json
+from core.evaluation import evaluate_binary_solution
 from core.knapsack import KnapsackProblem
 
 
-def run_benchmark(
-    problems: list[KnapsackProblem],
-    firefly_config: FireflyConfig | None = None,
-    fa_runs: int = 5,
-    astar_time_limit_sec: float = 5.0,
-    astar_max_expanded_nodes: int = 100_000,
-) -> list[dict[str, float | int | str | bool]]:
-    """Runs comparative benchmark between A* Search and Firefly Algorithm.
-
-    For each problem in problems:
-    - Runs solve_astar once (deterministic).
-    - Runs solve_firefly for `fa_runs` repeated trials (stochastic).
-    - Records metrics: total_value, total_weight, is_feasible, execution_time_ms, status.
-
-    Args:
-        problems: List of KnapsackProblem instances to benchmark.
-        firefly_config: Base FireflyConfig. If None, default config is used.
-        fa_runs: Number of independent runs for the Firefly Algorithm per instance (>= 1).
-        astar_time_limit_sec: Time limit for A* Search.
-        astar_max_expanded_nodes: Expansion limit for A* Search.
-
-    Returns:
-        List of result records (dictionaries).
-
-    Raises:
-        ValueError: If problems list is empty or fa_runs < 1.
-    """
-    if not problems:
-        raise ValueError("Benchmark problems list cannot be empty.")
-    if fa_runs < 1:
-        raise ValueError(f"fa_runs must be >= 1, got {fa_runs}")
-
-    if firefly_config is None:
-        firefly_config = FireflyConfig()
-
-    records: list[dict[str, float | int | str | bool]] = []
-
-    for prob in problems:
-        # A* execution
-        try:
-            astar_res = solve_astar(
-                problem=prob,
-                time_limit_sec=astar_time_limit_sec,
-                max_expanded_nodes=astar_max_expanded_nodes,
-            )
-            records.append(
-                {
-                    "problem_name": prob.name,
-                    "num_items": prob.num_items,
-                    "capacity": prob.capacity,
-                    "algorithm": "astar",
-                    "run_id": 0,
-                    "total_value": astar_res.total_value,
-                    "total_weight": astar_res.total_weight,
-                    "is_feasible": astar_res.is_feasible,
-                    "execution_time_ms": astar_res.execution_time_ms,
-                    "status": astar_res.status,
-                }
-            )
-        except NotImplementedError:
-            # During skeleton phase, mark pending
-            records.append(
-                {
-                    "problem_name": prob.name,
-                    "num_items": prob.num_items,
-                    "capacity": prob.capacity,
-                    "algorithm": "astar",
-                    "run_id": 0,
-                    "total_value": 0.0,
-                    "total_weight": 0.0,
-                    "is_feasible": False,
-                    "execution_time_ms": 0.0,
-                    "status": "pending_implementation",
-                }
-            )
-
-        # Firefly repeated executions
-        for run_idx in range(fa_runs):
-            run_cfg = FireflyConfig(
-                population_size=firefly_config.population_size,
-                max_iterations=firefly_config.max_iterations,
-                alpha=firefly_config.alpha,
-                alpha_decay=firefly_config.alpha_decay,
-                beta0=firefly_config.beta0,
-                gamma=firefly_config.gamma,
-                coord_min=firefly_config.coord_min,
-                coord_max=firefly_config.coord_max,
-                time_limit_sec=firefly_config.time_limit_sec,
-                seed=(firefly_config.seed + run_idx) if firefly_config.seed is not None else None,
-            )
+def run_benchmark(problems, firefly_config=None, fa_runs=5,
+                  astar_time_limit_sec=5.0, astar_max_expanded_nodes=100_000):
+    if not problems or isinstance(fa_runs, bool) or not isinstance(fa_runs, int) or fa_runs < 1:
+        raise ValueError('Need problems and an integer fa_runs >= 1')
+    cfg = firefly_config or FireflyConfig()
+    records = []
+    for index, problem in enumerate(problems):
+        reference = None
+        for algorithm, run_id in [('astar', 0)] + [('firefly', i) for i in range(fa_runs)]:
+            seed = (cfg.seed if cfg.seed is not None else 42) + run_id
+            record = dict(problem_id=index, problem_name=problem.name, num_items=problem.num_items,
+                          capacity=problem.capacity, algorithm=algorithm, run_id=run_id,
+                          seed=seed if algorithm == 'firefly' else None,
+                          total_value=None, total_weight=None, is_feasible=None,
+                          execution_time_ms=None, status='error', error='', gap_percent=None)
             try:
-                fa_res = solve_firefly(problem=prob, config=run_cfg)
-                records.append(
-                    {
-                        "problem_name": prob.name,
-                        "num_items": prob.num_items,
-                        "capacity": prob.capacity,
-                        "algorithm": "firefly",
-                        "run_id": run_idx,
-                        "total_value": fa_res.total_value,
-                        "total_weight": fa_res.total_weight,
-                        "is_feasible": fa_res.is_feasible,
-                        "execution_time_ms": fa_res.execution_time_ms,
-                        "status": fa_res.status,
-                    }
-                )
-            except NotImplementedError:
-                records.append(
-                    {
-                        "problem_name": prob.name,
-                        "num_items": prob.num_items,
-                        "capacity": prob.capacity,
-                        "algorithm": "firefly",
-                        "run_id": run_idx,
-                        "total_value": 0.0,
-                        "total_weight": 0.0,
-                        "is_feasible": False,
-                        "execution_time_ms": 0.0,
-                        "status": "pending_implementation",
-                    }
-                )
-
+                result = (solve_astar(problem, time_limit_sec=astar_time_limit_sec,
+                                     max_expanded_nodes=astar_max_expanded_nodes)
+                          if algorithm == 'astar' else solve_firefly(problem, replace(cfg, seed=seed)))
+                value, weight, feasible = evaluate_binary_solution(problem, result.binary_vector)
+                import math
+                selected = [i for i, bit in enumerate(result.binary_vector) if bit]
+                if (selected != result.selected_indices or not math.isclose(value, result.total_value, abs_tol=1e-7)
+                        or not math.isclose(weight, result.total_weight, abs_tol=1e-7)
+                        or feasible != result.is_feasible):
+                    raise ValueError('Solver result contradicts independently evaluated vector')
+                record.update(total_value=value, total_weight=weight, is_feasible=feasible,
+                              execution_time_ms=result.execution_time_ms, status=result.status)
+                if algorithm == 'astar' and result.status == 'optimal' and feasible:
+                    reference = value
+                if feasible and reference is not None:
+                    record['gap_percent'] = (100 * (reference-value) / reference if reference else 0.0)
+            except NotImplementedError as exc:
+                record.update(status='pending_implementation', error=str(exc))
+            except Exception as exc:
+                record.update(status='error', error=f'{type(exc).__name__}: {exc}')
+            records.append(record)
     return records
 
 
-def export_benchmark_results(
-    records: list[dict[str, float | int | str | bool]],
-    output_dir: str = "experiments/results",
-) -> dict[str, str]:
-    """Exports benchmark records to CSV and JSON files in output_dir.
+def summarize_results(records):
+    groups = {}
+    for row in records:
+        groups.setdefault((row['problem_id'], row['algorithm']), []).append(row)
+    summaries = []
+    for (problem_id, algorithm), rows in groups.items():
+        valid = [r for r in rows if r['is_feasible'] is True and r['status'] not in ('error', 'pending_implementation')]
+        values = [r['total_value'] for r in valid]
+        times = [r['execution_time_ms'] for r in valid]
+        gaps = [r['gap_percent'] for r in valid if r['gap_percent'] is not None]
+        summaries.append(dict(problem_id=problem_id, problem_name=rows[0]['problem_name'], algorithm=algorithm,
+            attempted=len(rows), valid=len(valid), value_mean=statistics.mean(values) if values else None,
+            value_std=statistics.stdev(values) if len(values)>1 else (0.0 if values else None),
+            value_best=max(values) if values else None, time_mean_ms=statistics.mean(times) if times else None,
+            time_std_ms=statistics.stdev(times) if len(times)>1 else (0.0 if times else None),
+            gap_mean_percent=statistics.mean(gaps) if gaps else None,
+            optimal_hits=sum(abs(g)<1e-7 for g in gaps) if gaps else None))
+    return summaries
 
-    Args:
-        records: List of benchmark result dictionaries.
-        output_dir: Destination directory path.
 
-    Returns:
-        Dictionary with keys 'csv_path' and 'json_path' mapping to saved file paths.
-    """
-    out_path = Path(output_dir)
-    out_path.mkdir(parents=True, exist_ok=True)
+def export_benchmark_results(records, output_dir='experiments/results'):
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    paths = {}
+    for name, data in [('benchmark_records', records), ('benchmark_summary', summarize_results(records))]:
+        for ext in ('json', 'csv'):
+            path = out / f'{name}.{ext}'
+            with path.open('w', encoding='utf-8', newline='') as stream:
+                if ext == 'json':
+                    json.dump(data, stream, indent=2, ensure_ascii=False, allow_nan=False)
+                elif data:
+                    writer = csv.DictWriter(stream, fieldnames=list(data[0]))
+                    writer.writeheader()
+                    writer.writerows(data)
+            paths[('' if name == 'benchmark_records' else 'summary_') + ext + '_path'] = str(path)
+    return paths
 
-    csv_path = out_path / "benchmark_records.csv"
-    json_path = out_path / "benchmark_records.json"
 
-    # Export CSV
-    if records:
-        fieldnames = list(records[0].keys())
-        with csv_path.open("w", encoding="utf-8", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(records)
+def main():
+    parser = argparse.ArgumentParser(description='Compare only A* and binary Firefly')
+    parser.add_argument('--output', default='experiments/results/latest')
+    parser.add_argument('--runs', type=int, default=10)
+    parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--time-limit', type=float, default=2.0)
+    parser.add_argument('--population', type=int, default=20)
+    parser.add_argument('--iterations', type=int, default=100)
+    args = parser.parse_args()
+    cfg = FireflyConfig(seed=args.seed, population_size=args.population,
+                        max_iterations=args.iterations, time_limit_sec=args.time_limit)
+    problems = [generate_dataset(n, capacity_ratio=ratio, seed=args.seed+k,
+                name=f'n{n}_r{ratio}_s{args.seed+k}')
+                for n in (10, 30, 100) for ratio in (0.25, 0.5, 0.75) for k in range(3)]
+    records = run_benchmark(problems, cfg, args.runs, args.time_limit)
+    export_benchmark_results(records, args.output)
+    out = Path(args.output)
+    for i, problem in enumerate(problems):
+        save_dataset_json(problem, str(out / 'datasets' / f'{i:03}.json'))
+    (out / 'metadata.json').write_text(json.dumps(dict(created_utc=datetime.now(timezone.utc).isoformat(),
+        python=platform.python_version(), platform=platform.platform(), arguments=vars(args),
+        firefly=asdict(cfg), astar_max_expanded_nodes=100000,
+        protocol='A* once; FA repeated seeds; gap only with certified optimal A*; sample standard deviation'),
+        indent=2), encoding='utf-8')
+    incomplete = sum(r['status'] in ('error', 'pending_implementation') for r in records)
+    print(f'{len(records)} attempts; {incomplete} unavailable/error; output: {out}')
+    return 2 if incomplete else 0
 
-    # Export JSON
-    with json_path.open("w", encoding="utf-8") as f:
-        json.dump(records, f, indent=2)
-
-    return {
-        "csv_path": str(csv_path),
-        "json_path": str(json_path),
-    }
+if __name__ == '__main__':
+    raise SystemExit(main())

@@ -1,0 +1,56 @@
+{
+  "name": "n10_r0.5_s43",
+  "capacity": 42.11,
+  "items": [
+    {
+      "id": "item_0",
+      "value": 35.11,
+      "weight": 1.73
+    },
+    {
+      "id": "item_1",
+      "value": 23.66,
+      "weight": 3.73
+    },
+    {
+      "id": "item_2",
+      "value": 39.85,
+      "weight": 13.76
+    },
+    {
+      "id": "item_3",
+      "value": 25.42,
+      "weight": 9.61
+    },
+    {
+      "id": "item_4",
+      "value": 22.19,
+      "weight": 1.36
+    },
+    {
+      "id": "item_5",
+      "value": 42.76,
+      "weight": 8.08
+    },
+    {
+      "id": "item_6",
+      "value": 38.01,
+      "weight": 11.39
+    },
+    {
+      "id": "item_7",
+      "value": 9.63,
+      "weight": 9.25
+    },
+    {
+      "id": "item_8",
+      "value": 41.19,
+      "weight": 17.17
+    },
+    {
+      "id": "item_9",
+      "value": 5.69,
+      "weight": 8.14
+    }
+  ]
+}
