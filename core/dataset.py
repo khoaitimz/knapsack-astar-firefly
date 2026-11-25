@@ -10,6 +10,7 @@ This module provides:
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 import csv
 import json
 import math
@@ -17,6 +18,27 @@ from pathlib import Path
 import random
 
 from core.knapsack import Item, KnapsackProblem
+
+
+def _is_finite_number(value: object) -> bool:
+    """Check numeric input without accepting booleans or raising type errors."""
+    try:
+        return not isinstance(value, bool) and math.isfinite(value)
+    except (TypeError, ValueError, OverflowError):
+        return False
+
+
+def _parse_number(value: object, field_name: str) -> float:
+    """Parse file fields and report malformed numbers consistently as ValueError."""
+    if isinstance(value, bool):
+        raise ValueError(f"{field_name} must be a finite number, got {value!r}")
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"{field_name} must be a finite number, got {value!r}") from exc
+    if not math.isfinite(number):
+        raise ValueError(f"{field_name} must be a finite number, got {value!r}")
+    return number
 
 
 def validate_problem(problem: KnapsackProblem) -> tuple[bool, str]:
@@ -31,19 +53,26 @@ def validate_problem(problem: KnapsackProblem) -> tuple[bool, str]:
     if not isinstance(problem, KnapsackProblem):
         return False, f"Expected KnapsackProblem, got {type(problem).__name__}"
 
-    if problem.num_items < 1:
-        return False, "Problem must contain at least 1 item."
+    if not isinstance(problem.items, Sequence) or len(problem.items) < 1:
+        return False, "Problem must contain a non-empty sequence of Items."
 
-    if not math.isfinite(problem.capacity) or problem.capacity <= 0.0:
-        return False, f"Capacity must be a positive finite float, got {problem.capacity}"
+    if not _is_finite_number(problem.capacity) or problem.capacity <= 0.0:
+        return False, f"Capacity must be a positive finite number, got {problem.capacity!r}"
+    if not isinstance(problem.name, str):
+        return False, "Problem name must be a string."
 
     for idx, item in enumerate(problem.items):
         if not isinstance(item, Item):
             return False, f"Item at index {idx} is not an Item instance."
-        if not math.isfinite(item.weight) or item.weight <= 0.0:
-            return False, f"Item at index {idx} has invalid weight {item.weight}"
-        if not math.isfinite(item.value) or item.value < 0.0:
-            return False, f"Item at index {idx} has invalid value {item.value}"
+        if not _is_finite_number(item.weight) or item.weight <= 0.0:
+            return False, f"Item at index {idx} has invalid weight {item.weight!r}"
+        if not _is_finite_number(item.value) or item.value < 0.0:
+            return False, f"Item at index {idx} has invalid value {item.value!r}"
+        if not isinstance(item.id, str):
+            return False, f"Item at index {idx} has an invalid id."
+
+    if tuple(problem.items) != tuple(problem):
+        return False, "Problem items are inconsistent with its indexed items."
 
     return True, "Problem is valid."
 
@@ -61,44 +90,56 @@ def generate_dataset(
     """Generates a synthetic 0/1 Knapsack problem with controlled characteristics.
 
     Args:
-        n_items: Number of items to generate (must be >= 1).
+        n_items: Number of items to generate (integer >= 1, excluding bool).
         capacity_ratio: Knapsack capacity as a fraction of sum of all item weights (0.0 < ratio <= 1.0).
         min_weight: Minimum weight per item (> 0).
         max_weight: Maximum weight per item (>= min_weight).
         min_value: Minimum value per item (>= 0).
         max_value: Maximum value per item (>= min_value).
-        seed: Random seed for deterministic generation.
+        seed: Integer seed for deterministic generation, or None.
         name: Name identifier for the generated problem.
 
     Returns:
         KnapsackProblem instance.
 
     Raises:
-        ValueError: If arguments violate geometric or numeric requirements.
+        ValueError: If arguments violate numeric requirements, or the resulting
+            capacity cannot be represented as a positive finite float.
     """
-    if n_items < 1:
-        raise ValueError(f"n_items must be >= 1, got {n_items}")
-    if not (0.0 < capacity_ratio <= 1.0):
-        raise ValueError(f"capacity_ratio must be in (0.0, 1.0], got {capacity_ratio}")
-    if min_weight <= 0.0 or max_weight < min_weight:
+    if isinstance(n_items, bool) or not isinstance(n_items, int) or n_items < 1:
+        raise ValueError(f"n_items must be an integer >= 1, got {n_items!r}")
+    if not _is_finite_number(capacity_ratio) or not (0.0 < capacity_ratio <= 1.0):
+        raise ValueError(f"capacity_ratio must be finite and in (0.0, 1.0], got {capacity_ratio!r}")
+    if (
+        not _is_finite_number(min_weight) or not _is_finite_number(max_weight)
+        or min_weight <= 0.0 or max_weight < min_weight
+    ):
         raise ValueError(f"Invalid weight bounds: [{min_weight}, {max_weight}]")
-    if min_value < 0.0 or max_value < min_value:
+    if (
+        not _is_finite_number(min_value) or not _is_finite_number(max_value)
+        or min_value < 0.0 or max_value < min_value
+    ):
         raise ValueError(f"Invalid value bounds: [{min_value}, {max_value}]")
+    if seed is not None and (isinstance(seed, bool) or not isinstance(seed, int)):
+        raise ValueError("seed must be an integer or None.")
+    if not isinstance(name, str):
+        raise ValueError("name must be a string.")
 
     rng = random.Random(seed)
     items: list[Item] = []
-    total_w = 0.0
-
     for idx in range(n_items):
-        w = round(rng.uniform(min_weight, max_weight), 2)
-        v = round(rng.uniform(min_value, max_value), 2)
+        w = rng.uniform(min_weight, max_weight)
+        v = rng.uniform(min_value, max_value)
+        # Preserve valid small/narrow bounds when rounding would leave the range.
+        if min_weight <= round(w, 2) <= max_weight:
+            w = round(w, 2)
+        if min_value <= round(v, 2) <= max_value:
+            v = round(v, 2)
         items.append(Item(value=v, weight=w, id=f"item_{idx}"))
-        total_w += w
 
-    capacity = round(total_w * capacity_ratio, 2)
-    # Ensure capacity is strictly positive
-    if capacity <= 0.0:
-        capacity = items[0].weight
+    capacity = sum(item.weight for item in items) * capacity_ratio
+    if not math.isfinite(capacity) or capacity <= 0.0:
+        raise ValueError("Generated capacity must be representable as a positive finite float.")
 
     return KnapsackProblem(items=items, capacity=capacity, name=name)
 
@@ -130,17 +171,17 @@ def load_dataset_json(file_path: str) -> KnapsackProblem:
     if not path.is_file():
         raise FileNotFoundError(f"JSON dataset file not found: {file_path}")
 
-    with path.open("r", encoding="utf-8") as f:
+    with path.open("r", encoding="utf-8-sig") as f:
         data = json.load(f)
 
     if not isinstance(data, dict):
         raise ValueError("JSON root must be an object.")
 
-    name = str(data.get("name", path.stem))
+    name = data.get("name", path.stem)
     if "capacity" not in data:
         raise ValueError("JSON dataset missing required 'capacity' field.")
 
-    capacity = float(data["capacity"])
+    capacity = _parse_number(data["capacity"], "capacity")
     items_raw = data.get("items")
     if not isinstance(items_raw, list) or len(items_raw) < 1:
         raise ValueError("JSON dataset must contain a non-empty 'items' list.")
@@ -149,9 +190,11 @@ def load_dataset_json(file_path: str) -> KnapsackProblem:
     for idx, raw in enumerate(items_raw):
         if not isinstance(raw, dict):
             raise ValueError(f"Item entry at index {idx} must be an object.")
-        val = float(raw["value"])
-        wt = float(raw["weight"])
-        item_id = str(raw.get("id", f"item_{idx}"))
+        if "value" not in raw or "weight" not in raw:
+            raise ValueError(f"Item at index {idx} must contain 'value' and 'weight'.")
+        val = _parse_number(raw["value"], f"Item {idx} value")
+        wt = _parse_number(raw["weight"], f"Item {idx} weight")
+        item_id = raw.get("id", "")
         items.append(Item(value=val, weight=wt, id=item_id))
 
     return KnapsackProblem(items=items, capacity=capacity, name=name)
@@ -187,58 +230,55 @@ def load_dataset_csv(file_path: str) -> KnapsackProblem:
     capacity: float | None = None
     name = path.stem
 
-    with path.open("r", encoding="utf-8", errors="replace") as f:
-        reader = csv.reader(f)
-        header_parsed = False
+    with path.open("r", encoding="utf-8-sig", newline="") as f:
+        reader = csv.reader(f, strict=True)
+        headers: list[str] = []
         col_indices: dict[str, int] = {}
 
-        for line_num, row in enumerate(reader, start=1):
-            if not row:
-                continue
-            first_cell = row[0].strip()
-            # Parse capacity comment if present
-            if first_cell.startswith("#"):
-                comment = ",".join(row).replace("#", "").strip()
-                if "capacity" in comment.lower():
-                    parts = comment.split(":")
-                    if len(parts) >= 2:
-                        try:
-                            capacity = float(parts[1].strip())
-                        except ValueError:
-                            pass
-                continue
+        try:
+            for row in reader:
+                if not row or (len(row) == 1 and not row[0].strip()):
+                    continue
+                first_cell = row[0].strip()
+                if first_cell.startswith("#"):
+                    comment = ",".join(row).strip()[1:].strip()
+                    label, separator, raw_capacity = comment.partition(":")
+                    if label.strip().lower() == "capacity":
+                        if not separator:
+                            raise ValueError(f"Missing capacity value at CSV line {reader.line_num}.")
+                        if capacity is not None:
+                            raise ValueError("CSV dataset contains multiple capacity declarations.")
+                        capacity = _parse_number(raw_capacity.strip(), "capacity")
+                        if capacity <= 0.0:
+                            raise ValueError("CSV capacity must be positive.")
+                    continue
 
-            if not header_parsed:
-                headers = [h.strip().lower() for h in row]
-                if "value" not in headers or "weight" not in headers:
-                    raise ValueError(
-                        f"CSV header must contain 'value' and 'weight' columns. Got: {row}"
-                    )
-                col_indices["value"] = headers.index("value")
-                col_indices["weight"] = headers.index("weight")
-                col_indices["id"] = headers.index("id") if "id" in headers else -1
-                header_parsed = True
-                continue
+                if not headers:
+                    headers = [h.strip().lower() for h in row]
+                    if "value" not in headers or "weight" not in headers:
+                        raise ValueError("CSV header must contain 'value' and 'weight' columns.")
+                    if len(set(headers)) != len(headers):
+                        raise ValueError("CSV header must not contain duplicate column names.")
+                    col_indices = {header: index for index, header in enumerate(headers)}
+                    continue
 
-            # Parse item row
-            try:
-                val = float(row[col_indices["value"]].strip())
-                wt = float(row[col_indices["weight"]].strip())
-                item_id = (
-                    row[col_indices["id"]].strip()
-                    if col_indices["id"] != -1 and len(row) > col_indices["id"]
-                    else f"item_{len(items)}"
-                )
-            except (ValueError, IndexError) as exc:
-                raise ValueError(f"Malformed row at line {line_num}: {row}") from exc
-
-            items.append(Item(value=val, weight=wt, id=item_id))
+                if len(row) != len(headers):
+                    raise ValueError(f"Wrong number of columns at CSV line {reader.line_num}: {row}")
+                try:
+                    val = _parse_number(row[col_indices["value"]].strip(), "value")
+                    wt = _parse_number(row[col_indices["weight"]].strip(), "weight")
+                    item_id = row[col_indices["id"]].strip() if "id" in col_indices else ""
+                    items.append(Item(value=val, weight=wt, id=item_id))
+                except ValueError as exc:
+                    raise ValueError(f"Invalid item at CSV line {reader.line_num}: {exc}") from exc
+        except csv.Error as exc:
+            raise ValueError(f"Malformed CSV at line {reader.line_num}: {exc}") from exc
 
     if not items:
         raise ValueError("No items found in CSV dataset.")
 
     if capacity is None:
-        capacity = round(sum(it.weight for it in items) * 0.5, 2)
+        capacity = sum(it.weight for it in items) * 0.5
 
     return KnapsackProblem(items=items, capacity=capacity, name=name)
 

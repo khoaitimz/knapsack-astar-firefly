@@ -7,7 +7,10 @@ from __future__ import annotations
 
 from dataclasses import FrozenInstanceError, replace
 from itertools import product
+import json
 from pathlib import Path
+import random
+import tempfile
 import unittest
 
 from core.dataset import (
@@ -286,12 +289,197 @@ class TestEvaluation(unittest.TestCase):
 class TestDatasetIO(unittest.TestCase):
     """Tests for dataset generation and JSON/CSV parsing."""
 
+    def setUp(self) -> None:
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.directory = Path(directory.name)
+
+    def write_dataset(self, filename: str, content: str) -> str:
+        path = self.directory / filename
+        path.write_text(content, encoding="utf-8-sig")
+        return str(path)
+
     def test_generate_dataset(self) -> None:
         prob = generate_dataset(n_items=5, capacity_ratio=0.5, seed=42)
         is_valid, msg = validate_problem(prob)
         self.assertTrue(is_valid, msg)
         self.assertEqual(prob.num_items, 5)
         self.assertGreater(prob.capacity, 0.0)
+
+    def test_validate_problem_rejects_wrong_type(self) -> None:
+        for problem in (None, {}, [], "problem"):
+            with self.subTest(problem=problem):
+                valid, message = validate_problem(problem)
+                self.assertFalse(valid)
+                self.assertTrue(message)
+
+    def test_validate_problem_handles_mutated_fields(self) -> None:
+        for field, value in (
+            ("capacity", None), ("capacity", "5"), ("capacity", True),
+            ("capacity", float("nan")), ("capacity", float("inf")),
+            ("capacity", 0.0), ("capacity", -1.0), ("name", None),
+            ("items", None), ("items", []), ("items", [None]),
+            ("items", [Item(value=2.0, weight=1.0)]),
+        ):
+            with self.subTest(field=field, value=value):
+                problem = KnapsackProblem([Item(value=1.0, weight=1.0)], capacity=1.0)
+                setattr(problem, field, value)
+                valid, message = validate_problem(problem)
+                self.assertFalse(valid)
+                self.assertTrue(message)
+
+    def test_generate_dataset_is_reproducible_without_changing_global_rng(self) -> None:
+        state = random.getstate()
+        first = generate_dataset(10, seed=42, name="repeatable")
+        second = generate_dataset(10, seed=42, name="repeatable")
+        self.assertEqual(first, second)
+        self.assertEqual(random.getstate(), state)
+        self.assertNotEqual(first.items, generate_dataset(10, seed=43).items)
+        self.assertEqual([item.id for item in first.items], [f"item_{i}" for i in range(10)])
+        self.assertEqual(first.capacity, first.total_weight * 0.5)
+
+    def test_generate_dataset_rejects_invalid_arguments(self) -> None:
+        invalid = [
+            {"n_items": value} for value in (0, -1, 1.5, True, None, "2")
+        ]
+        invalid.extend(
+            {field: value}
+            for field in ("capacity_ratio", "min_weight", "max_weight", "min_value", "max_value")
+            for value in (None, "1", True, float("nan"), float("inf"), -float("inf"))
+        )
+        invalid.extend([
+            {"capacity_ratio": 0.0}, {"capacity_ratio": 1.01},
+            {"min_weight": 0.0}, {"min_weight": -1.0},
+            {"min_weight": 3.0, "max_weight": 2.0},
+            {"min_value": -1.0}, {"min_value": 3.0, "max_value": 2.0},
+            {"seed": True}, {"seed": 1.5}, {"seed": "42"}, {"name": None},
+        ])
+        for overrides in invalid:
+            kwargs = {"n_items": 2, **overrides}
+            with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
+                generate_dataset(**kwargs)
+
+    def test_generate_dataset_preserves_small_bounds_and_capacity_ratio(self) -> None:
+        problem = generate_dataset(
+            2, capacity_ratio=0.25, min_weight=0.003, max_weight=0.003,
+            min_value=0.0, max_value=0.0, seed=0,
+        )
+        self.assertEqual([item.weight for item in problem.items], [0.003, 0.003])
+        self.assertEqual(problem.total_value, 0.0)
+        self.assertEqual(problem.capacity, 0.0015)
+        self.assertTrue(validate_problem(problem)[0])
+
+    def test_generate_dataset_stays_within_narrow_bounds(self) -> None:
+        problem = generate_dataset(
+            20, capacity_ratio=1.0, min_weight=1.001, max_weight=1.002,
+            min_value=0.001, max_value=0.002, seed=0,
+        )
+        for item in problem.items:
+            self.assertTrue(1.001 <= item.weight <= 1.002)
+            self.assertTrue(0.001 <= item.value <= 0.002)
+        self.assertEqual(problem.capacity, problem.total_weight)
+
+    def test_generate_dataset_rejects_unrepresentable_capacity(self) -> None:
+        with self.assertRaises(ValueError):
+            generate_dataset(2, min_weight=1e308, max_weight=1e308)
+        with self.assertRaises(ValueError):
+            generate_dataset(1, min_weight=1e-300, max_weight=1e-300, capacity_ratio=1e-300)
+
+    def test_loaders_report_missing_files(self) -> None:
+        for loader, extension in ((load_dataset_json, "json"), (load_dataset_csv, "csv")):
+            with self.subTest(extension=extension), self.assertRaises(FileNotFoundError):
+                loader(str(self.directory / f"missing.{extension}"))
+
+    def test_json_defaults_numeric_strings_and_utf8_bom(self) -> None:
+        payload = {
+            "capacity": "2.5",
+            "items": [
+                {"value": "4.5", "weight": "1.5"},
+                {"id": "vật_phẩm", "value": 0, "weight": 1},
+            ],
+        }
+        path = self.write_dataset("unicode.json", json.dumps(payload, ensure_ascii=False))
+        problem = load_dataset_json(path)
+        self.assertEqual(problem.name, "unicode")
+        self.assertEqual(problem.capacity, 2.5)
+        self.assertEqual(problem[0], Item(value=4.5, weight=1.5, id="item_0"))
+        self.assertEqual(problem[1].id, "vật_phẩm")
+
+    def test_json_rejects_invalid_schema_and_numbers(self) -> None:
+        item = {"value": 1, "weight": 1}
+        invalid = [
+            [], None, {}, {"items": [item]}, {"capacity": 1},
+            {"capacity": 1, "items": []}, {"capacity": 1, "items": {}},
+            {"capacity": 1, "items": [None]},
+            {"capacity": 1, "items": [{"value": 1}]},
+            {"capacity": 1, "items": [{"weight": 1}]},
+            {"capacity": 1, "items": [item], "name": None},
+            {"capacity": 1, "items": [{**item, "id": None}]},
+        ]
+        invalid.extend(
+            {"capacity": value, "items": [item]}
+            for value in (None, True, 0, -1, "bad", float("nan"), float("inf"), 10**400)
+        )
+        invalid.extend(
+            {"capacity": 1, "items": [{**item, field: value}]}
+            for field in ("value", "weight")
+            for value in (None, True, -1, [], "bad", float("nan"), float("inf"))
+        )
+        for payload in invalid:
+            with self.subTest(payload=payload), self.assertRaises(ValueError):
+                load_dataset_json(self.write_dataset("invalid.json", json.dumps(payload)))
+        with self.assertRaises(ValueError):
+            load_dataset_json(self.write_dataset("invalid.json", '{"capacity":'))
+
+    def test_csv_defaults_capacity_and_item_ids_without_rounding_to_zero(self) -> None:
+        path = self.write_dataset("tiny.csv", "value,weight\n0,0.003\n2,0.001\n")
+        problem = load_dataset_csv(path)
+        self.assertEqual(problem.name, "tiny")
+        self.assertEqual(problem.capacity, 0.002)
+        self.assertEqual([item.id for item in problem.items], ["item_0", "item_1"])
+
+    def test_csv_handles_bom_comments_reordered_columns_and_quoted_ids(self) -> None:
+        path = self.write_dataset(
+            "flexible.csv",
+            '\n  \n# description: example\n# CAPACITY : 2.5\n WEIGHT , ID , VALUE \n'
+            '1.5,"vật,phẩm",4.5\n1,,0\n',
+        )
+        problem = load_dataset_csv(path)
+        self.assertEqual(problem.capacity, 2.5)
+        self.assertEqual(problem.items, (
+            Item(value=4.5, weight=1.5, id="vật,phẩm"),
+            Item(value=0.0, weight=1.0, id="item_1"),
+        ))
+
+    def test_csv_rejects_invalid_rows_headers_and_capacity(self) -> None:
+        invalid = [
+            "", "# just a comment\n", "id,value,weight\n",
+            "id,value\na,1\n", "value,weight,weight\n1,1,1\n",
+            "id,value,weight\na,1\n", "value,weight\n1,1,extra\n",
+            'id,value,weight\n"unterminated,1,1\n',
+            "value,weight\n1,0\n", "value,weight\n-1,1\n",
+            "value,weight\nNaN,1\n", "value,weight\n1,inf\n",
+            "value,weight\nbad,1\n", "value,weight\n,1\n",
+            "# capacity\nvalue,weight\n1,1\n",
+            "# capacity: 1\n# capacity: 2\nvalue,weight\n1,1\n",
+        ]
+        invalid.extend(
+            f"# capacity: {capacity}\nvalue,weight\n1,1\n"
+            for capacity in ("", "bad", "0", "-1", "NaN", "inf", "True")
+        )
+        for content in invalid:
+            with self.subTest(content=content), self.assertRaises(ValueError):
+                load_dataset_csv(self.write_dataset("invalid.csv", content))
+
+    def test_loaders_reject_invalid_utf8(self) -> None:
+        for loader, filename, content in (
+            (load_dataset_json, "invalid.json", b'{"capacity":1,"items":[{"id":"\xff","value":1,"weight":1}]}'),
+            (load_dataset_csv, "invalid.csv", b"id,value,weight\n\xff,1,1\n"),
+        ):
+            path = self.directory / filename
+            path.write_bytes(content)
+            with self.subTest(filename=filename), self.assertRaises(ValueError):
+                loader(str(path))
 
     def test_load_sample_json_and_csv(self) -> None:
         datasets = Path(__file__).resolve().parents[1] / "assets" / "datasets"
