@@ -5,7 +5,8 @@ Responsible member: TV1
 
 from __future__ import annotations
 
-import math
+from dataclasses import FrozenInstanceError, replace
+from itertools import product
 from pathlib import Path
 import unittest
 
@@ -54,6 +55,24 @@ class TestItem(unittest.TestCase):
         with self.assertRaises(ValueError):
             Item(value=10.0, weight=float("nan"))
 
+    def test_invalid_numeric_inputs_raise_value_error(self) -> None:
+        for field in ("value", "weight"):
+            for value in (None, "5", True, float("nan"), float("inf"), -float("inf")):
+                with self.subTest(field=field, value=value):
+                    kwargs = {"value": 0.0, "weight": 1.0, field: value}
+                    with self.assertRaises(ValueError):
+                        Item(**kwargs)
+
+    def test_zero_value_and_immutable_item(self) -> None:
+        item = Item(value=0.0, weight=1.0)
+        self.assertEqual(item.density, 0.0)
+        with self.assertRaises(FrozenInstanceError):
+            item.value = 1.0
+
+    def test_non_string_id_raises(self) -> None:
+        with self.assertRaises(ValueError):
+            Item(value=1.0, weight=1.0, id=None)
+
 
 class TestKnapsackProblem(unittest.TestCase):
     """Tests for KnapsackProblem initialization and automatic ID assignment."""
@@ -87,9 +106,48 @@ class TestKnapsackProblem(unittest.TestCase):
         with self.assertRaises(ValueError):
             KnapsackProblem(items=items, capacity=float("inf"))
 
+    def test_input_list_is_copied_without_mutating_items(self) -> None:
+        original = Item(value=10.0, weight=5.0)
+        items = [original]
+        problem = KnapsackProblem(items=items, capacity=5.0)
+        items.clear()
+        self.assertEqual(original.id, "")
+        self.assertEqual(problem[0].id, "item_0")
+        self.assertEqual(len(problem), 1)
+        self.assertEqual(tuple(problem), problem.items)
+        self.assertEqual(problem.name, "knapsack_01")
+
+    def test_tuple_input_and_blank_id(self) -> None:
+        problem = KnapsackProblem(
+            items=(Item(value=1.0, weight=1.0, id="  "),), capacity=1.0
+        )
+        self.assertEqual(problem[0].id, "item_0")
+
+    def test_invalid_inputs_raise_value_error(self) -> None:
+        for items in (None, 1, "invalid", [None], [{"value": 1, "weight": 1}]):
+            with self.subTest(items=items), self.assertRaises(ValueError):
+                KnapsackProblem(items=items, capacity=1.0)
+        for capacity in (None, "1", True, float("nan")):
+            with self.subTest(capacity=capacity), self.assertRaises(ValueError):
+                KnapsackProblem(items=[Item(value=1.0, weight=1.0)], capacity=capacity)
+        with self.assertRaises(ValueError):
+            KnapsackProblem(items=[Item(value=1.0, weight=1.0)], capacity=1.0, name=None)
+
 
 class TestSolutionResult(unittest.TestCase):
     """Tests for SolutionResult validation."""
+
+    def setUp(self) -> None:
+        self.result = SolutionResult(
+            algorithm_name="test_algo",
+            selected_indices=[0, 2],
+            binary_vector=[1, 0, 1],
+            total_value=30.0,
+            total_weight=13.0,
+            is_feasible=True,
+            execution_time_ms=1.5,
+            status="optimal",
+        )
 
     def test_valid_result(self) -> None:
         res = SolutionResult(
@@ -119,6 +177,45 @@ class TestSolutionResult(unittest.TestCase):
                 status="random_unknown_status",
                 metrics={},
             )
+
+    def test_all_contract_statuses_are_accepted(self) -> None:
+        for status in VALID_SOLUTION_STATUSES:
+            with self.subTest(status=status):
+                self.assertEqual(replace(self.result, status=status).status, status)
+
+    def test_invalid_numeric_inputs_raise_value_error(self) -> None:
+        for field in ("total_value", "total_weight", "execution_time_ms"):
+            for value in (-1.0, float("inf"), float("nan"), None, "1", True):
+                with self.subTest(field=field, value=value), self.assertRaises(ValueError):
+                    replace(self.result, **{field: value})
+
+    def test_invalid_solution_vectors_raise(self) -> None:
+        for vector in (None, (1, 0, 1), [1, 2, 1], [1, -1, 1], [1, 0.0, 1], [True, 0, 1]):
+            with self.subTest(vector=vector), self.assertRaises(ValueError):
+                replace(self.result, binary_vector=vector)
+        for indices in (None, [0, 0, 2], [-1, 2], [0, 3], [0], [1, 2], [0.0, 2], [False, 2]):
+            with self.subTest(indices=indices), self.assertRaises(ValueError):
+                replace(self.result, selected_indices=indices)
+
+    def test_selection_order_is_preserved(self) -> None:
+        result = replace(self.result, selected_indices=[2, 0])
+        self.assertEqual(result.selected_indices, [2, 0])
+
+    def test_empty_selection_and_independent_default_metrics(self) -> None:
+        result = SolutionResult(
+            algorithm_name="test_algo", selected_indices=[], binary_vector=[0, 0],
+            total_value=0.0, total_weight=0.0, is_feasible=True,
+            execution_time_ms=0.0, status="optimal",
+        )
+        result.metrics["iterations"] = 1
+        self.assertEqual(self.result.metrics, {})
+
+    def test_invalid_field_types_raise_value_error(self) -> None:
+        for field, value in (
+            ("algorithm_name", None), ("status", []), ("is_feasible", 1), ("metrics", [])
+        ):
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                replace(self.result, **{field: value})
 
 
 class TestEvaluation(unittest.TestCase):
@@ -197,18 +294,32 @@ class TestDatasetIO(unittest.TestCase):
         self.assertGreater(prob.capacity, 0.0)
 
     def test_load_sample_json_and_csv(self) -> None:
-        json_file = Path("assets/datasets/sample_01.json")
-        csv_file = Path("assets/datasets/sample_01.csv")
+        datasets = Path(__file__).resolve().parents[1] / "assets" / "datasets"
+        expected = {
+            "sample_01": (4, 20.0, 39.0),
+            "sample_02": (3, 50.0, 220.0),
+            "sample_03": (5, 7.5, 22.0),
+            "sample_04": (5, 15.0, 24.0),
+            "sample_05": (3, 2.0, 0.0),
+            "sample_06": (12, 35.0, 72.0),
+        }
+        for name, (num_items, capacity, optimum) in expected.items():
+            with self.subTest(dataset=name):
+                problem = load_dataset_json(str(datasets / f"{name}.json"))
+                csv_problem = load_dataset_csv(str(datasets / f"{name}.csv"))
+                self.assertEqual(problem, csv_problem)
+                self.assertEqual(problem.num_items, num_items)
+                self.assertEqual(problem.capacity, capacity)
+                valid, message = validate_problem(problem)
+                self.assertTrue(valid, message)
 
-        if json_file.exists():
-            prob_json = load_dataset_json(str(json_file))
-            self.assertEqual(prob_json.num_items, 4)
-            self.assertEqual(prob_json.capacity, 20.0)
-
-        if csv_file.exists():
-            prob_csv = load_dataset_csv(str(csv_file))
-            self.assertEqual(prob_csv.num_items, 4)
-            self.assertEqual(prob_csv.capacity, 20.0)
+                # Exhaustive enumeration is an independent oracle for these small samples.
+                solutions = (
+                    evaluate_binary_solution(problem, bits)
+                    for bits in product((0, 1), repeat=num_items)
+                )
+                best_value = max(value for value, _, feasible in solutions if feasible)
+                self.assertEqual(best_value, optimum)
 
 
 if __name__ == "__main__":

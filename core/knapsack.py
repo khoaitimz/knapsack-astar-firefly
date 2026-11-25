@@ -9,9 +9,9 @@ This module defines the foundational entities:
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 import math
-from typing import Sequence
 
 # Valid statuses defined in INTERFACE_CONTRACT.md
 VALID_SOLUTION_STATUSES = frozenset(
@@ -24,6 +24,21 @@ VALID_SOLUTION_STATUSES = frozenset(
         "no_feasible_solution",
     }
 )
+
+
+def _validate_number(value: float, name: str, *, positive: bool = False) -> None:
+    """Validate numeric fields and report invalid input consistently as ValueError."""
+    try:
+        valid = (
+            not isinstance(value, bool)
+            and math.isfinite(value)
+            and (value > 0.0 if positive else value >= 0.0)
+        )
+    except (TypeError, ValueError, OverflowError):
+        valid = False
+    if not valid:
+        constraint = "positive" if positive else "non-negative"
+        raise ValueError(f"{name} must be a {constraint} finite number, got {value!r}")
 
 
 @dataclass(frozen=True)
@@ -42,14 +57,10 @@ class Item:
     id: str = ""
 
     def __post_init__(self) -> None:
-        if not math.isfinite(self.weight) or self.weight <= 0.0:
-            raise ValueError(
-                f"Item weight must be a positive finite float, got {self.weight!r}"
-            )
-        if not math.isfinite(self.value) or self.value < 0.0:
-            raise ValueError(
-                f"Item value must be a non-negative finite float, got {self.value!r}"
-            )
+        _validate_number(self.weight, "Item weight", positive=True)
+        _validate_number(self.value, "Item value")
+        if not isinstance(self.id, str):
+            raise ValueError(f"Item id must be a string, got {self.id!r}")
 
     @property
     def density(self) -> float:
@@ -73,18 +84,17 @@ class KnapsackProblem:
     _items_tuple: tuple[Item, ...] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
-        if not self.items or len(self.items) < 1:
-            raise ValueError("KnapsackProblem must contain at least 1 item.")
-        if not math.isfinite(self.capacity) or self.capacity <= 0.0:
-            raise ValueError(
-                f"Capacity must be a positive finite float, got {self.capacity!r}"
-            )
+        if not isinstance(self.items, Sequence) or len(self.items) < 1:
+            raise ValueError("KnapsackProblem must contain a non-empty sequence of Items.")
+        _validate_number(self.capacity, "Capacity", positive=True)
+        if not isinstance(self.name, str):
+            raise ValueError(f"Problem name must be a string, got {self.name!r}")
 
         # Normalize items to tuple and auto-assign missing IDs
         normalized: list[Item] = []
         for idx, item in enumerate(self.items):
             if not isinstance(item, Item):
-                raise TypeError(f"Expected Item instance at index {idx}, got {type(item)}")
+                raise ValueError(f"Expected Item instance at index {idx}, got {type(item).__name__}")
             if item.id.strip() == "":
                 normalized.append(Item(value=item.value, weight=item.weight, id=f"item_{idx}"))
             else:
@@ -130,6 +140,10 @@ class SolutionResult:
             {"optimal", "feasible", "time_limit", "max_iter", "max_expanded", "no_feasible_solution"}
         metrics: Dictionary of algorithm-specific instrumentation metrics
             (e.g., expanded_nodes, generated_nodes, convergence_history, iterations).
+
+    The selected indices must be unique and match the vector's set bits; their
+    order is preserved. Totals and feasibility must be computed by the solver
+    against its problem, which is not stored in this result.
     """
 
     algorithm_name: str
@@ -140,18 +154,36 @@ class SolutionResult:
     is_feasible: bool
     execution_time_ms: float
     status: str
-    metrics: dict[str, float | int | list[float]]
+    metrics: dict[str, float | int | list[float]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        if self.status not in VALID_SOLUTION_STATUSES:
+        if not isinstance(self.status, str) or self.status not in VALID_SOLUTION_STATUSES:
             raise ValueError(
                 f"Invalid status {self.status!r}. Must be one of {sorted(VALID_SOLUTION_STATUSES)}"
             )
-        if not math.isfinite(self.total_value) or self.total_value < 0.0:
-            raise ValueError(f"total_value must be non-negative finite float, got {self.total_value!r}")
-        if not math.isfinite(self.total_weight) or self.total_weight < 0.0:
-            raise ValueError(f"total_weight must be non-negative finite float, got {self.total_weight!r}")
-        if not math.isfinite(self.execution_time_ms) or self.execution_time_ms < 0.0:
-            raise ValueError(
-                f"execution_time_ms must be non-negative finite float, got {self.execution_time_ms!r}"
-            )
+        _validate_number(self.total_value, "total_value")
+        _validate_number(self.total_weight, "total_weight")
+        _validate_number(self.execution_time_ms, "execution_time_ms")
+
+        if not isinstance(self.algorithm_name, str):
+            raise ValueError("algorithm_name must be a string.")
+        if not isinstance(self.is_feasible, bool):
+            raise ValueError("is_feasible must be a bool.")
+        if not isinstance(self.binary_vector, list) or any(
+            type(bit) is not int or bit not in (0, 1) for bit in self.binary_vector
+        ):
+            raise ValueError("binary_vector must be a list of integers containing only 0 or 1.")
+        if not isinstance(self.selected_indices, list) or any(
+            type(index) is not int or not 0 <= index < len(self.binary_vector)
+            for index in self.selected_indices
+        ):
+            raise ValueError("selected_indices must be a list of valid 0-based integer indices.")
+
+        selected = set(self.selected_indices)
+        if len(selected) != len(self.selected_indices):
+            raise ValueError("selected_indices must not contain duplicates.")
+        expected = {index for index, bit in enumerate(self.binary_vector) if bit == 1}
+        if selected != expected:
+            raise ValueError("selected_indices must match the selected items in binary_vector.")
+        if not isinstance(self.metrics, dict):
+            raise ValueError("metrics must be a dictionary.")

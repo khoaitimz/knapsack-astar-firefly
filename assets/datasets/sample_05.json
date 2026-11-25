@@ -1,0 +1,9 @@
+{
+  "name": "sample_05",
+  "capacity": 2.0,
+  "items": [
+    {"id": "item_0", "value": 5.0, "weight": 3.0},
+    {"id": "item_1", "value": 8.0, "weight": 4.0},
+    {"id": "item_2", "value": 12.0, "weight": 5.0}
+  ]
+}

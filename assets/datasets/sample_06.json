@@ -1,0 +1,18 @@
+{
+  "name": "sample_06",
+  "capacity": 35.0,
+  "items": [
+    {"id": "item_0", "value": 6.0, "weight": 2.0},
+    {"id": "item_1", "value": 5.0, "weight": 3.0},
+    {"id": "item_2", "value": 10.0, "weight": 5.0},
+    {"id": "item_3", "value": 13.0, "weight": 7.0},
+    {"id": "item_4", "value": 3.0, "weight": 1.0},
+    {"id": "item_5", "value": 8.0, "weight": 4.0},
+    {"id": "item_6", "value": 12.0, "weight": 6.0},
+    {"id": "item_7", "value": 15.0, "weight": 8.0},
+    {"id": "item_8", "value": 17.0, "weight": 9.0},
+    {"id": "item_9", "value": 19.0, "weight": 10.0},
+    {"id": "item_10", "value": 21.0, "weight": 11.0},
+    {"id": "item_11", "value": 24.0, "weight": 12.0}
+  ]
+}
